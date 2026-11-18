@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Panel Analítico Boost AI - Análisis de Casos</title>
     <!-- Librerías: Chart.js, DataLabels, y PapaParse -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     
@@ -103,18 +103,18 @@
 </head>
 <body>
 
-    <div id="syncToast">
+    <div id="syncToast" style="display: none;">
         <div class="spinner"></div>
-        <span id="syncText">Sincronizando datos con la nube...</span>
+        <span id="syncText">Procesando...</span>
     </div>
 
     <div id="updateBox">
-        🕒 Última importación: <span id="lblLastUpdate" style="font-weight: bold;">--</span>
+        🕒 Última importación: <span id="lblLastUpdate" style="font-weight: bold;">Sin datos cargados</span>
     </div>
 
     <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="procesarArchivoCSV(event)">
 
-    <div id="mainLayout" style="opacity: 0.5; pointer-events: none;">
+    <div id="mainLayout">
         
         <!-- ========================================================================= -->
         <!-- MÓDULO DE TÍTULO INDEPENDIENTE (PUEDES COPIARLO Y PEGARLO EN OTROS HTML)  -->
@@ -193,13 +193,18 @@
             <div style="display: flex; gap: 8px; align-items: flex-end;">
                 <button class="btn btn-primary" onclick="accionProtegida('agentes')">⚙️ Nombres Agentes</button>
                 <button class="btn btn-import" onclick="accionProtegida('importar')">⬆️ Importar CSV</button>
-                <button class="btn btn-export" onclick="accionProtegida('exportar')">📥 Exportar Nueva Hoja</button>
+                <button class="btn btn-export" onclick="accionProtegida('exportar')">📥 Exportar CSV</button>
             </div>
         </div>
 
         <div class="container">
             <!-- COLUMNA IZQUIERDA: DASHBOARD ANALÍTICO -->
             <div class="dashboard-col">
+
+                <!-- Estado vacío: visible mientras no se haya importado un CSV -->
+                <div id="emptyState" style="font-size: 13px; background: var(--progress); color: var(--text); padding: 14px 16px; border-radius: 8px; border: 1px dashed var(--bold-blue); text-align: center;">
+                    📂 <b>No hay datos cargados.</b> Pulsa <b>⬆️ Importar CSV</b> (arriba a la derecha) y selecciona el archivo de conversaciones para poblar el panel.
+                </div>
                 
                 <div style="font-size: 11px; background: #e3f2fd; color: #0d47a1; padding: 6px 12px; border-radius: 6px; border: 1px solid #bbdefb;">
                     💡 <b>Tip de interactividad:</b> Puedes hacer clic sobre las barras, donas o filas de las tablas para <b>filtrar cruzado</b>. Clickea nuevamente para limpiar esa selección.
@@ -352,56 +357,34 @@
             "30663": "LOG | Entrega de datáfonos GenAI | auth_failed_ log | V 1.1"
         };
 
+        // Columnas que el panel espera encontrar en el CSV (session_id es obligatoria)
+        const COLUMNA_OBLIGATORIA = 'session_id';
+        const COLUMNAS_ESPERADAS = [
+            'session_id', 'timestamp', 'user_message', 'user_button_click', 'response',
+            'is_human_chat', 'predicted_intent_title', 'displayed_action_type',
+            'displayed_action_id', 'message_feedback'
+        ];
+
+        let toastTimer = null;
+
         window.onload = function() {
             cargarMapeoGuardado();
-            setTimeout(solicitarDatosBackend, 300);
+            // Dibuja el panel vacío (KPIs en 0, gráficas sin datos) hasta que se importe un CSV
+            inicializarDatos([]);
         };
 
-        function mostrarToastSync(texto, showSpinner = true) {
+        function mostrarToastSync(texto, showSpinner = true, esError = false) {
+            clearTimeout(toastTimer);
             const t = document.getElementById('syncToast');
             document.getElementById('syncText').innerText = texto;
             t.querySelector('.spinner').style.display = showSpinner ? 'block' : 'none';
+            t.style.background = esError ? 'var(--bold-red)' : 'var(--bold-blue)';
             t.style.display = 'flex';
         }
-        function ocultarToastSync() { document.getElementById('syncToast').style.display = 'none'; }
-
-        function solicitarDatosBackend() {
-            mostrarToastSync("Sincronizando con Google Sheets...");
-            google.script.run
-                .withSuccessHandler(procesarRespuestaLigera)
-                .withFailureHandler((err) => { 
-                    mostrarToastSync("⚠️ Error de conexión: " + err.message, false); 
-                    document.getElementById('syncToast').style.background = 'var(--bold-red)';
-                })
-                .obtenerDatosHoja();
-        }
-
-        function procesarRespuestaLigera(respuestaTexto) {
-            try {
-                mostrarToastSync("Analizando información...");
-                var payload = JSON.parse(respuestaTexto);
-                document.getElementById('lblLastUpdate').innerText = payload.ultimaActualizacion;
-
-                var data2D = payload.datos;
-                if (!data2D || data2D.length === 0) {
-                    mostrarToastSync("Sin datos. Importa un CSV.", false);
-                    document.getElementById('mainLayout').style.opacity = '1';
-                    document.getElementById('mainLayout').style.pointerEvents = 'auto';
-                    return;
-                }
-
-                var headers = data2D[0];
-                var dataFormateada = [];
-                for (var i = 1; i < data2D.length; i++) {
-                    var obj = {};
-                    for (var j = 0; j < headers.length; j++) { obj[headers[j]] = data2D[i][j]; }
-                    dataFormateada.push(obj);
-                }
-                inicializarDatos(dataFormateada);
-            } catch(e) { 
-                mostrarToastSync("⚠️ Error procesando datos.", false);
-                console.error(e);
-            }
+        function ocultarToastSync() { clearTimeout(toastTimer); document.getElementById('syncToast').style.display = 'none'; }
+        function toastTemporal(texto, esError = false, ms = 4000) {
+            mostrarToastSync(texto, false, esError);
+            toastTimer = setTimeout(ocultarToastSync, ms);
         }
 
         function accionProtegida(accion) {
@@ -416,32 +399,62 @@
         }
 
         function procesarArchivoCSV(event) {
-            const file = event.target.files[0];
+            const input = event.target;
+            const file = input.files[0];
             if (!file) return;
 
-            document.getElementById('mainLayout').style.opacity = '0.5';
-            document.getElementById('mainLayout').style.pointerEvents = 'none';
-            mostrarToastSync("Procesando CSV e inyectando datos...", true);
+            mostrarToastSync("Leyendo " + file.name + "...", true);
 
+            // El CSV se procesa 100% en el navegador: no se sube a ningún servidor
             Papa.parse(file, {
-                skipEmptyLines: true,
+                header: true,
+                skipEmptyLines: 'greedy',
+                transformHeader: h => h.replace(/^\uFEFF/, '').trim(),
                 complete: function(results) {
-                    google.script.run
-                        .withSuccessHandler(function(msj) {
-                            alert(msj);
-                            solicitarDatosBackend(); 
-                        })
-                        .withFailureHandler(function(err){
-                            mostrarToastSync("⚠️ Error al importar", false);
-                            alert("Error: " + err.message);
-                            document.getElementById('mainLayout').style.opacity = '1';
-                            document.getElementById('mainLayout').style.pointerEvents = 'auto';
-                        })
-                        .actualizarHojaConversaciones(JSON.stringify(results.data)); 
+                    try {
+                        const columnas = (results.meta && results.meta.fields) || [];
+                        const filas = results.data || [];
+
+                        if (!columnas.includes(COLUMNA_OBLIGATORIA)) {
+                            toastTemporal("⚠️ El CSV no tiene la columna '" + COLUMNA_OBLIGATORIA + "'.", true, 6000);
+                            alert("El archivo no parece ser un export de conversaciones válido.\n\nNo se encontró la columna obligatoria: " + COLUMNA_OBLIGATORIA + "\nColumnas detectadas: " + (columnas.join(', ') || '(ninguna)'));
+                            return;
+                        }
+                        if (filas.length === 0) {
+                            toastTemporal("⚠️ El CSV no contiene filas de datos.", true, 6000);
+                            return;
+                        }
+
+                        // Una importación nueva reemplaza la anterior: se limpian los filtros previos
+                        document.getElementById('filterDateStart').value = '';
+                        document.getElementById('filterDateEnd').value = '';
+                        document.getElementById('filterEscalation').value = 'all';
+                        document.getElementById('filterFeedback').value = 'all';
+                        document.getElementById('localDateStart').value = '';
+                        document.getElementById('localDateEnd').value = '';
+
+                        inicializarDatos(filas);
+
+                        const ahora = new Date().toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+                        document.getElementById('lblLastUpdate').innerText = file.name + " · " + ahora;
+
+                        const faltantes = COLUMNAS_ESPERADAS.filter(c => !columnas.includes(c));
+                        const nSesiones = Object.keys(allSessions).length;
+                        if (faltantes.length) {
+                            toastTemporal("✅ " + nSesiones + " sesiones cargadas, pero faltan columnas: " + faltantes.join(', '), true, 8000);
+                        } else {
+                            toastTemporal("✅ " + filas.length + " filas · " + nSesiones + " sesiones cargadas");
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        toastTemporal("⚠️ Error procesando el CSV: " + e.message, true, 6000);
+                    }
                 },
-                error: function(err) { alert("Error CSV: " + err.message); }
+                error: function(err) {
+                    toastTemporal("⚠️ Error leyendo el CSV: " + err.message, true, 6000);
+                }
             });
-            event.target.value = '';
+            input.value = ''; // permite volver a importar el mismo archivo
         }
 
         document.addEventListener('click', function(e) {
@@ -457,7 +470,8 @@
         }
 
         function cargarMapeoGuardado() {
-            const saved = localStorage.getItem('BOOST_AGENTS_MAP');
+            let saved = null;
+            try { saved = localStorage.getItem('BOOST_AGENTS_MAP'); } catch(e) {}
             if (saved) { try { mapAgentes = JSON.parse(saved); } catch(e) { mapAgentes = { ...DEFAULT_MAPPING }; } } 
             else { mapAgentes = { ...DEFAULT_MAPPING }; }
         }
@@ -558,9 +572,7 @@
             poblarFiltroSemanas(Array.from(uniqueWeeks));
             poblarFiltrosEstaticos();
 
-            ocultarToastSync();
-            document.getElementById('mainLayout').style.opacity = '1';
-            document.getElementById('mainLayout').style.pointerEvents = 'auto';
+            document.getElementById('emptyState').style.display = Object.keys(allSessions).length ? 'none' : 'block';
             aplicarFiltros();
         }
 
@@ -950,7 +962,11 @@
         });
 
         function exportarDataLimpia() {
-            mostrarToastSync("Exportando CSV. Tomará un segundo...", true);
+            if (Object.keys(filteredSessions).length === 0) {
+                alert("No hay sesiones para exportar. Importa un CSV o ajusta los filtros.");
+                return;
+            }
+            mostrarToastSync("Generando CSV...", true);
             const listaAgentesIDs = Object.keys(detectedActionIDs).sort();
             const columnasAgentes = listaAgentesIDs.map(aid => "Uso Agente: " + (mapAgentes[aid] || `ID ${aid}`));
 
@@ -975,10 +991,18 @@
                 datosParaHoja.push(fila);
             });
 
-            google.script.run
-                .withSuccessHandler(function(msj) { alert(msj); ocultarToastSync(); })
-                .withFailureHandler(function(err) { alert("⚠️ Error: " + err.message); ocultarToastSync(); })
-                .guardarDataLimpiaEnHoja(JSON.stringify(datosParaHoja));
+            // Descarga local (UTF-8 con BOM para que Excel respete tildes y ñ)
+            const csv = Papa.unparse(datosParaHoja);
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Boost_AI_Data_Limpia_' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toastTemporal("✅ CSV exportado: " + (datosParaHoja.length - 1) + " sesiones");
         }
 
         function abrirModalAgentes() {
@@ -989,7 +1013,7 @@
         function cerrarModalAgentes() { document.getElementById('modalAgentes').style.display = 'none'; }
         function guardarMapeoAgentes() {
             Object.keys(detectedActionIDs).forEach(aid => { const i = document.getElementById(`input_agent_${aid}`); if (i) mapAgentes[aid] = i.value.trim(); });
-            localStorage.setItem('BOOST_AGENTS_MAP', JSON.stringify(mapAgentes));
+            try { localStorage.setItem('BOOST_AGENTS_MAP', JSON.stringify(mapAgentes)); } catch(e) { console.warn('No se pudo guardar el mapeo de agentes', e); }
             cerrarModalAgentes(); poblarFiltrosEstaticos(); aplicarFiltros();
         }
     </script>
