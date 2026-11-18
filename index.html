@@ -52,7 +52,6 @@
         .container { display: flex; gap: 15px; flex: 1; min-height: 0; }
         
         .dashboard-col { flex: 1.5; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 5px; height: 100%; }
-        .chat-col { flex: 0.8; background: var(--chat-bg); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; height: 100%; border: 1px solid var(--border); background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');}
         
         /* Métricas */
         .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -79,20 +78,20 @@
         .modal-content { background-color: var(--surface); padding: 20px; border-radius: 8px; width: 85%; max-width: 900px; max-height: 85vh; overflow-y: auto; border: 1px solid var(--border); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; }
         
-        /* Visor Chat WhatsApp */
-        .chat-header { background: var(--bg); padding: 10px 15px; border-bottom: 1px solid var(--border); display: flex; align-items: center;}
-        .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .msg { max-width: 85%; padding: 8px 12px; border-radius: 7px; font-size: 13.5px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); line-height: 1.4;}
-        .msg.user { background: var(--user-msg); align-self: flex-end; border-top-right-radius: 0; }
-        .msg.bot { background: var(--bot-msg); align-self: flex-start; border-top-left-radius: 0; }
-        .msg-time { font-size: 10px; color: var(--text-light); text-align: right; margin-top: 4px; display: block; }
-        
-        /* Etiquetas personalizadas */
-        .action-tag { font-size: 10px; color: white; background: var(--bold-blue); padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; display: inline-block; font-weight: 600; }
-        .intent-tag { font-size: 10px; color: white; background: var(--bold-plum); padding: 2px 6px; border-radius: 4px; margin-bottom: 4px; display: inline-block; font-weight: 600; }
-        .feedback-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: bold; margin-top: 4px; }
-        .feedback-badge.positive { background: var(--completed); color: #155724; border: 1px solid #c3e6cb; }
-        .feedback-badge.negative { background: var(--pending); color: var(--bold-red); border: 1px solid #f5c6cb; }
+        /* Listado de Sesiones */
+        .sessions-col { flex: 0.8; background: var(--surface); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; height: 100%; border: 1px solid var(--border); padding: 16px 16px 10px 16px; min-width: 0; }
+        .sessions-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; gap: 10px; flex-shrink: 0; }
+        .sessions-header h3 { margin: 0; font-size: 16px; color: var(--bold-blue); }
+        .sessions-sub { font-size: 11px; color: var(--text-light); margin-top: 4px; }
+        .sessions-sub b { color: var(--bold-red); }
+        .page-size { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: bold; color: var(--text-light); }
+        .sessions-table-wrap { flex: 1; overflow-y: auto; min-height: 0; }
+        .sessions-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .sessions-table th { background: var(--surface); text-align: left; padding: 10px 8px; color: var(--text-light); border-bottom: 2px solid var(--border); position: sticky; top: 0; z-index: 1; }
+        .sessions-table td { padding: 8px; border-bottom: 1px solid var(--bg); }
+        .sessions-table tbody tr:hover { background-color: var(--bg); }
+        .sessions-empty { text-align: center; color: var(--text-light); padding: 40px 10px !important; font-size: 13px; }
+        #paginationControls { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding-top: 10px; flex-shrink: 0; }
 
         #syncToast { position: fixed; bottom: 15px; left: 15px; background: var(--bold-blue); color: white; padding: 10px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; z-index: 3000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; transition: opacity 0.3s ease; }
         .spinner { border: 2px solid rgba(255,255,255,0.3); border-left-color: white; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; }
@@ -282,24 +281,30 @@
 
             </div>
 
-            <!-- COLUMNA DERECHA: VISOR CHAT WHATSAPP -->
-            <div class="chat-col">
-                <div style="padding: 10px 15px; background: var(--surface); border-bottom: 1px solid var(--border);">
-                    <select id="sessionSelector" style="width: 100%;">
-                        <option value="">Selecciona una sesión (Filtra para buscar)...</option>
-                    </select>
-                </div>
-                <div class="chat-header">
+            <!-- COLUMNA DERECHA: LISTADO DE SESIONES -->
+            <div class="sessions-col">
+                <div class="sessions-header">
                     <div>
-                        <div style="font-weight: bold; font-size: 14px; color: var(--bold-blue);">Visor de Conversación</div>
-                        <div style="font-size: 12px; color: var(--text-light);" id="chatSubHeader">Selecciona un ID para ver el chat</div>
+                        <h3>📋 Listado de Sesiones</h3>
+                        <div class="sessions-sub" id="sessionsSubtitle">Top <b>0</b> recientes</div>
+                    </div>
+                    <div class="page-size">
+                        <label for="pageSizeSelect">Mostrar:</label>
+                        <select id="pageSizeSelect" onchange="cambiarTamanoPagina()">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="20" selected>20</option>
+                        </select>
                     </div>
                 </div>
-                <div class="chat-body" id="chatBody">
-                    <div style="text-align: center; color: var(--text-light); margin-top: 50px; font-size: 13px;">
-                        👈 Aplica filtros en la izquierda o usa las gráficas interactivas y elige una sesión aquí para auditar los mensajes exactos.
-                    </div>
+                <div class="sessions-table-wrap">
+                    <table class="sessions-table">
+                        <thead><tr><th>ID Sesión</th><th>Fecha</th><th>Estado</th><th>Acción</th></tr></thead>
+                        <tbody id="sessionsTableBody"></tbody>
+                    </table>
                 </div>
+                <div id="paginationControls"></div>
             </div>
         </div>
     </div>
@@ -335,6 +340,11 @@
         // Variables Globales para permitir repintar las tablas
         let lastDateStats = {}; 
         let lastAgentStats = {};
+
+        // Listado de sesiones (paginación)
+        const MAX_SESIONES_LISTADO = 100;
+        let currentPage = 1;
+        let pageSize = 20;
 
         const rootStyles = getComputedStyle(document.documentElement);
         const colorBoldBlue = rootStyles.getPropertyValue('--bold-blue').trim() || '#121E6C';
@@ -530,10 +540,14 @@
                     allSessions[sid] = { 
                         rows: [], escalated: false, date: dateStr, 
                         actionIDs: new Set(), intents: new Set(),
-                        hasThumbsUp: false, hasThumbsDown: false, semana: "Sin Semana"
+                        hasThumbsUp: false, hasThumbsDown: false, semana: "Sin Semana", lastTs: 0
                     };
                 }
                 allSessions[sid].rows.push(row);
+                if (row.timestamp) {
+                    const ts = new Date(row.timestamp).getTime();
+                    if (!isNaN(ts) && ts > allSessions[sid].lastTs) allSessions[sid].lastTs = ts;
+                }
 
                 if (row.message_feedback === 'thumbs_up') allSessions[sid].hasThumbsUp = true;
                 if (row.message_feedback === 'thumbs_down') allSessions[sid].hasThumbsDown = true;
@@ -690,7 +704,8 @@
             lastAgentStats = agentTableStats;
 
             renderizarTablas();
-            actualizarSelectorChat();
+            currentPage = 1;
+            renderizarListadoSesiones();
         }
 
         function actualizarKPIs(totalMsgs) {
@@ -929,37 +944,71 @@
             });
         }
 
-        function actualizarSelectorChat() {
-            const selector = document.getElementById('sessionSelector');
-            selector.innerHTML = '<option value="">Selecciona una sesión para auditarla...</option>';
-            Object.keys(filteredSessions).forEach(sid => {
-                const s = filteredSessions[sid];
-                selector.innerHTML += `<option value="${sid}">[${s.date}] Sesión ${sid} ${s.escalated ? '🔴' : '🟢'} ${s.hasThumbsUp ? '👍' : ''} ${s.hasThumbsDown ? '👎' : ''}</option>`;
-            });
-            document.getElementById('chatBody').innerHTML = '<div style="text-align: center; color: var(--text-light); margin-top: 50px; font-size: 13px;">👈 Usa los filtros cruzados y elige una sesión aquí para auditar los mensajes exactos.</div>';
-            document.getElementById('chatSubHeader').innerText = 'Selecciona un ID';
+        // --- LISTADO DE SESIONES ---
+        function escaparHtml(t) {
+            return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
-        document.getElementById('sessionSelector').addEventListener('change', function(e) {
-            const sid = e.target.value; const cb = document.getElementById('chatBody');
-            if (!sid || !filteredSessions[sid]) return;
-            const s = filteredSessions[sid];
-            document.getElementById('chatSubHeader').innerText = `ID: ${sid} | ${s.date} | ${s.escalated ? 'Escalado 🔴' : 'Resuelto 🟢'}`;
-            cb.innerHTML = '';
-            s.rows.forEach(r => {
-                let t = r.timestamp ? new Date(r.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
-                if (r.user_message) cb.innerHTML += `<div class="msg user">${r.predicted_intent_title ? `<div class="intent-tag">🧠 ${r.predicted_intent_title}</div>` : ''}${r.user_message}<span class="msg-time">${t}</span></div>`;
-                if (r.user_button_click) cb.innerHTML += `<div class="msg user">${r.predicted_intent_title ? `<div class="intent-tag">🧠 ${r.predicted_intent_title}</div>` : ''}<i>[Clic]:</i> ${r.user_button_click}<span class="msg-time">${t}</span></div>`;
-                if (r.response) {
-                    let isGen = r.displayed_action_type && String(r.displayed_action_type).toLowerCase() === 'generative';
-                    let actTag = (r.displayed_action_id && isGen) ? `<div class="action-tag">🤖 ${mapAgentes[String(Math.floor(r.displayed_action_id))] || 'ID '+Math.floor(r.displayed_action_id)}</div>` : "";
-                    let fb = r.message_feedback === 'thumbs_up' ? `<div class="feedback-badge positive">👍 Útil</div>` : (r.message_feedback === 'thumbs_down' ? `<div class="feedback-badge negative">👎 No Útil</div>` : "");
-                    cb.innerHTML += `<div class="msg bot">${actTag}${r.response}${fb}<span class="msg-time">${t}</span></div>`;
-                }
-                if (String(r.is_human_chat).toLowerCase() === 'true' && r.user_message) cb.innerHTML += `<div style="text-align: center; margin: 8px 0;"><span style="background: var(--pending); border: 1px solid var(--bold-red); font-size: 11px; padding: 3px 10px; border-radius: 10px; color:var(--bold-red); font-weight:bold;">⚠ Transferido a Humano</span></div>`;
+        function irAPagina(n) { currentPage = n; renderizarListadoSesiones(); }
+
+        function cambiarTamanoPagina() {
+            pageSize = parseInt(document.getElementById('pageSizeSelect').value) || 20;
+            currentPage = 1;
+            renderizarListadoSesiones();
+        }
+
+        function renderizarListadoSesiones() {
+            const tbody = document.getElementById('sessionsTableBody');
+
+            // Más recientes primero (último mensaje de cada sesión); tope de 100
+            const ordenadas = Object.keys(filteredSessions)
+                .map(sid => ({ sid: sid, s: filteredSessions[sid] }))
+                .sort((a, b) => (b.s.lastTs - a.s.lastTs) || b.s.date.localeCompare(a.s.date));
+            const top = ordenadas.slice(0, MAX_SESIONES_LISTADO);
+
+            document.getElementById('sessionsSubtitle').innerHTML =
+                `Top <b>${top.length}</b> recientes` + (ordenadas.length > top.length ? ` (de ${ordenadas.length} filtradas)` : '');
+
+            if (top.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="sessions-empty">Sin sesiones para mostrar. Importa un CSV o ajusta los filtros.</td></tr>';
+                document.getElementById('paginationControls').innerHTML = '';
+                return;
+            }
+
+            const totalPages = Math.max(1, Math.ceil(top.length / pageSize));
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+            const pageSessions = top.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+            let htmlFragments = [];
+            pageSessions.forEach(item => {
+                let sid = item.sid;
+                let s = item.s;
+                const estado = s.escalated ? '<span style="color:var(--bold-red); font-weight:bold;">🔴 Escalada</span>' : '<span style="color:green; font-weight:bold;">🟢 Resuelta</span>';
+                const fechas = (s.date && s.date !== "Sin Fecha") ? `from_date=${s.date}&` : '';
+                const hasta = (s.date && s.date !== "Sin Fecha") ? `&to_date=${s.date}` : '';
+                const url = `https://adminpanel-bold.boost.ai/conversationAnalytics?conversation_text_sources=all&${fechas}log_environment_id=1&no_utterance_calls=exclude&page=1&session_id=${encodeURIComponent(sid)}${hasta}&visited_url_criteria=starts_with`;
+
+                htmlFragments.push(`
+                    <tr>
+                        <td>${escaparHtml(sid)}</td>
+                        <td>${s.date}</td>
+                        <td>${estado}</td>
+                        <td>
+                            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding: 4px 8px; font-size:10px; text-decoration: none;">Ver Chat ↗</a>
+                        </td>
+                    </tr>
+                `);
             });
-            cb.scrollTop = cb.scrollHeight;
-        });
+            tbody.innerHTML = htmlFragments.join('');
+
+            let pagHtml = [];
+            for (let i = 1; i <= totalPages; i++) {
+                let isActive = i === currentPage ? 'background: var(--bold-blue); color: white;' : 'background: var(--surface); color: var(--text); border: 1px solid var(--border);';
+                pagHtml.push(`<button onclick="irAPagina(${i})" style="padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; ${isActive}">${i}</button>`);
+            }
+            document.getElementById('paginationControls').innerHTML = pagHtml.join('');
+        }
 
         function exportarDataLimpia() {
             if (Object.keys(filteredSessions).length === 0) {
